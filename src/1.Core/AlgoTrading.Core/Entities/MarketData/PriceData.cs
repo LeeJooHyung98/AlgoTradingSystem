@@ -247,16 +247,4 @@ public sealed class PriceDataId : GuidId
     public static PriceDataId New() => new(Guid.NewGuid());
 }
 
-/// <summary>
-/// Market Status enumeration
-/// </summary>
-public enum MarketStatus
-{
-    PreOpen = 1,        // 장 시작 전
-    Opening = 2,        // 개시
-    Trading = 3,        // 거래 중
-    Closing = 4,        // 마감
-    AfterHours = 5,     // 장 마감 후
-    Halted = 6,         // 거래 정지
-    Closed = 7          // 휴장
-}
+// Note: MarketStatus enum is now defined in MarketData.cs to avoid duplication

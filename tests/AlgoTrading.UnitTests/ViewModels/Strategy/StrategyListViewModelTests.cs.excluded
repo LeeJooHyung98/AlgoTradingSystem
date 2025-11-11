@@ -1,0 +1,349 @@
+using AlgoTrading.Application.Services.Strategy;
+using AlgoTrading.Core.Entities.Strategy;
+using AlgoTrading.Desktop.ViewModels.Strategy;
+using ErrorOr;
+using FluentAssertions;
+using Microsoft.Extensions.Logging;
+using NSubstitute;
+using Xunit;
+
+namespace AlgoTrading.UnitTests.ViewModels.Strategy;
+
+/// <summary>
+/// Unit tests for StrategyListViewModel
+/// Tests ViewModel behavior, commands, and data binding
+/// </summary>
+public class StrategyListViewModelTests
+{
+    private readonly IStrategyService _strategyService;
+    private readonly ILogger<StrategyListViewModel> _logger;
+    private readonly StrategyListViewModel _sut;
+
+    public StrategyListViewModelTests()
+    {
+        _strategyService = Substitute.For<IStrategyService>();
+        _logger = Substitute.For<ILogger<StrategyListViewModel>>();
+
+        _sut = new StrategyListViewModel(_strategyService, _logger);
+    }
+
+    #region LoadStrategiesAsync Tests
+
+    [Fact]
+    public async Task LoadStrategiesAsync_WithStrategies_ShouldPopulateCollection()
+    {
+        // Arrange
+        var strategies = new List<TradingStrategy>
+        {
+            TradingStrategy.Create("Strategy1", "Description1", Core.Entities.Strategy.StrategyType.Momentum, "User1"),
+            TradingStrategy.Create("Strategy2", "Description2", Core.Entities.Strategy.StrategyType.MeanReversion, "User2")
+        };
+
+        _strategyService.GetAllStrategiesAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<ErrorOr<IEnumerable<TradingStrategy>>>((strategies.AsEnumerable())));
+
+        // Act
+        await _sut.LoadStrategiesCommand.ExecuteAsync(null);
+
+        // Assert
+        _sut.Strategies.Should().HaveCount(2);
+        _sut.Strategies[0].Name.Should().Be("Strategy1");
+        _sut.Strategies[1].Name.Should().Be("Strategy2");
+        _sut.IsBusy.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task LoadStrategiesAsync_WithError_ShouldShowErrorAndKeepCollectionEmpty()
+    {
+        // Arrange
+        var error = ErrorOr.Error.Failure("Strategy.LoadFailed", "Failed to load strategies");
+        _strategyService.GetAllStrategiesAsync(Arg.Any<CancellationToken>())
+            .Returns(error);
+
+        // Act
+        await _sut.LoadStrategiesCommand.ExecuteAsync(null);
+
+        // Assert
+        _sut.Strategies.Should().BeEmpty();
+        _sut.IsBusy.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task LoadStrategiesAsync_ShouldSetBusyFlagDuringExecution()
+    {
+        // Arrange
+        var strategies = new List<TradingStrategy>
+        {
+            TradingStrategy.Create("Strategy1", "Description1", Core.Entities.Strategy.StrategyType.Momentum, "User1")
+        };
+
+        var tcs = new TaskCompletionSource<ErrorOr<IEnumerable<TradingStrategy>>>();
+
+        _strategyService.GetAllStrategiesAsync(Arg.Any<CancellationToken>())
+            .Returns(info => tcs.Task);
+
+        // Act
+        var task = _sut.LoadStrategiesCommand.ExecuteAsync(null);
+
+        // Assert - During execution
+        _sut.IsBusy.Should().BeTrue();
+        _sut.BusyMessage.Should().Be("Loading strategies...");
+
+        // Complete the task
+        tcs.SetResult((strategies.AsEnumerable()));
+        await task;
+
+        // Assert - After execution
+        _sut.IsBusy.Should().BeFalse();
+        _sut.BusyMessage.Should().BeEmpty();
+    }
+
+    #endregion
+
+    #region CreateStrategy Tests
+
+    [Fact]
+    public void CreateStrategy_ShouldNavigateToEditor()
+    {
+        // Arrange & Act
+        _sut.CreateStrategyCommand.Execute(null);
+
+        // Assert
+        // In a real application, this would trigger navigation
+        // For now, we just verify the command executes without error
+        _sut.CreateStrategyCommand.CanExecute(null).Should().BeTrue();
+    }
+
+    #endregion
+
+    #region DeleteStrategyAsync Tests
+
+    [Fact]
+    public async Task DeleteStrategyAsync_WithSelectedStrategy_ShouldDeleteAndRefresh()
+    {
+        // Arrange
+        var strategy = TradingStrategy.Create("Test", "Description", Core.Entities.Strategy.StrategyType.Momentum, "User");
+        var strategies = new List<TradingStrategy> { strategy };
+
+        _strategyService.GetAllStrategiesAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<ErrorOr<IEnumerable<TradingStrategy>>>((strategies.AsEnumerable())));
+
+        await _sut.LoadStrategiesCommand.ExecuteAsync(null);
+
+        _sut.SelectedStrategy = _sut.Strategies.First();
+
+        _strategyService.DeleteStrategyAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<ErrorOr<bool>>((true)));
+
+        // Prepare for refresh
+        _strategyService.GetAllStrategiesAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<ErrorOr<IEnumerable<TradingStrategy>>>((Enumerable.Empty<TradingStrategy>())));
+
+        // Act
+        await _sut.DeleteStrategyCommand.ExecuteAsync(null);
+
+        // Assert
+        _sut.Strategies.Should().BeEmpty();
+        await _strategyService.Received(1).DeleteStrategyAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public void DeleteStrategyCommand_WithoutSelection_ShouldBeDisabled()
+    {
+        // Arrange
+        _sut.SelectedStrategy = null;
+
+        // Act & Assert
+        _sut.DeleteStrategyCommand.CanExecute(null).Should().BeFalse();
+    }
+
+    #endregion
+
+    #region ActivateStrategyAsync Tests
+
+    [Fact]
+    public async Task ActivateStrategyAsync_WithValidStrategy_ShouldActivateAndRefresh()
+    {
+        // Arrange
+        var strategy = TradingStrategy.Create("Test", "Description", Core.Entities.Strategy.StrategyType.Momentum, "User");
+        var rule = StrategyRule.Create("Rule1", "Test Rule", Core.Entities.Strategy.RuleType.EntryLong, "condition", 1);
+        strategy.AddRule(rule);
+
+        var strategies = new List<TradingStrategy> { strategy };
+
+        _strategyService.GetAllStrategiesAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<ErrorOr<IEnumerable<TradingStrategy>>>((strategies.AsEnumerable())));
+
+        await _sut.LoadStrategiesCommand.ExecuteAsync(null);
+        _sut.SelectedStrategy = _sut.Strategies.First();
+
+        strategy.Activate();
+        _strategyService.ActivateStrategyAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<ErrorOr<TradingStrategy>>((strategy)));
+
+        // Prepare for refresh with activated strategy
+        _strategyService.GetAllStrategiesAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<ErrorOr<IEnumerable<TradingStrategy>>>((strategies.AsEnumerable())));
+
+        // Act
+        await _sut.ActivateStrategyCommand.ExecuteAsync(null);
+
+        // Assert
+        await _strategyService.Received(1).ActivateStrategyAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        _sut.Strategies.Should().HaveCount(1);
+        _sut.Strategies[0].Status.Should().Be("Active");
+    }
+
+    #endregion
+
+    #region DeactivateStrategyAsync Tests
+
+    [Fact]
+    public async Task DeactivateStrategyAsync_WithActiveStrategy_ShouldDeactivateAndRefresh()
+    {
+        // Arrange
+        var strategy = TradingStrategy.Create("Test", "Description", Core.Entities.Strategy.StrategyType.Momentum, "User");
+        var rule = StrategyRule.Create("Rule1", "Test Rule", Core.Entities.Strategy.RuleType.EntryLong, "condition", 1);
+        strategy.AddRule(rule);
+        strategy.Activate();
+
+        var strategies = new List<TradingStrategy> { strategy };
+
+        _strategyService.GetAllStrategiesAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<ErrorOr<IEnumerable<TradingStrategy>>>((strategies.AsEnumerable())));
+
+        await _sut.LoadStrategiesCommand.ExecuteAsync(null);
+        _sut.SelectedStrategy = _sut.Strategies.First();
+
+        strategy.Deactivate("Test deactivation");
+        _strategyService.DeactivateStrategyAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<ErrorOr<TradingStrategy>>((strategy)));
+
+        // Prepare for refresh with deactivated strategy
+        _strategyService.GetAllStrategiesAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<ErrorOr<IEnumerable<TradingStrategy>>>((strategies.AsEnumerable())));
+
+        // Act
+        await _sut.DeactivateStrategyCommand.ExecuteAsync(null);
+
+        // Assert
+        await _strategyService.Received(1).DeactivateStrategyAsync(
+            Arg.Any<Guid>(),
+            Arg.Any<CancellationToken>());
+        _sut.Strategies.Should().HaveCount(1);
+        _sut.Strategies[0].Status.Should().Be("Inactive");
+    }
+
+    #endregion
+
+    #region CloneStrategyAsync Tests
+
+    [Fact]
+    public async Task CloneStrategyAsync_WithSelectedStrategy_ShouldCloneAndRefresh()
+    {
+        // Arrange
+        var originalStrategy = TradingStrategy.Create("Original", "Original Description",
+            Core.Entities.Strategy.StrategyType.Momentum, "User");
+        var clonedStrategy = TradingStrategy.Create("Original (Copy)", "Original Description",
+            Core.Entities.Strategy.StrategyType.Momentum, "User");
+
+        var strategies = new List<TradingStrategy> { originalStrategy };
+
+        _strategyService.GetAllStrategiesAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<ErrorOr<IEnumerable<TradingStrategy>>>((strategies.AsEnumerable())));
+
+        await _sut.LoadStrategiesCommand.ExecuteAsync(null);
+        _sut.SelectedStrategy = _sut.Strategies.First();
+
+        _strategyService.CloneStrategyAsync(
+            Arg.Any<Guid>(),
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<ErrorOr<TradingStrategy>>((clonedStrategy)));
+
+        // Prepare for refresh with both strategies
+        var clonedStrategies = new List<TradingStrategy> { originalStrategy, clonedStrategy };
+        _strategyService.GetAllStrategiesAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<ErrorOr<IEnumerable<TradingStrategy>>>((clonedStrategies.AsEnumerable())));
+
+        // Act
+        await _sut.CloneStrategyCommand.ExecuteAsync(null);
+
+        // Assert
+        await _strategyService.Received(1).CloneStrategyAsync(
+            Arg.Any<Guid>(),
+            Arg.Is<string>(s => s.Contains("Copy")),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>());
+        _sut.Strategies.Should().HaveCount(2);
+    }
+
+    #endregion
+
+    #region IsStrategySelected Property Tests
+
+    [Fact]
+    public void IsStrategySelected_WithSelection_ShouldBeTrue()
+    {
+        // Arrange
+        var strategy = TradingStrategy.Create("Test", "Description", Core.Entities.Strategy.StrategyType.Momentum, "User");
+        var strategies = new List<TradingStrategy> { strategy };
+
+        _strategyService.GetAllStrategiesAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<ErrorOr<IEnumerable<TradingStrategy>>>((strategies.AsEnumerable())));
+
+        _sut.LoadStrategiesCommand.ExecuteAsync(null).Wait();
+
+        // Act
+        _sut.SelectedStrategy = _sut.Strategies.First();
+
+        // Assert
+        _sut.IsStrategySelected.Should().BeTrue();
+    }
+
+    [Fact]
+    public void IsStrategySelected_WithoutSelection_ShouldBeFalse()
+    {
+        // Arrange
+        _sut.SelectedStrategy = null;
+
+        // Act & Assert
+        _sut.IsStrategySelected.Should().BeFalse();
+    }
+
+    #endregion
+
+    #region PropertyChanged Tests
+
+    [Fact]
+    public void SelectedStrategy_Changed_ShouldRaisePropertyChanged()
+    {
+        // Arrange
+        var strategy = TradingStrategy.Create("Test", "Description", Core.Entities.Strategy.StrategyType.Momentum, "User");
+        var strategies = new List<TradingStrategy> { strategy };
+
+        _strategyService.GetAllStrategiesAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<ErrorOr<IEnumerable<TradingStrategy>>>((strategies.AsEnumerable())));
+
+        _sut.LoadStrategiesCommand.ExecuteAsync(null).Wait();
+
+        var propertyChangedRaised = false;
+        _sut.PropertyChanged += (sender, args) =>
+        {
+            if (args.PropertyName == nameof(_sut.SelectedStrategy) ||
+                args.PropertyName == nameof(_sut.IsStrategySelected))
+            {
+                propertyChangedRaised = true;
+            }
+        };
+
+        // Act
+        _sut.SelectedStrategy = _sut.Strategies.First();
+
+        // Assert
+        propertyChangedRaised.Should().BeTrue();
+    }
+
+    #endregion
+}

@@ -1,0 +1,458 @@
+using AlgoTrading.Application.Services.Strategy;
+using AlgoTrading.Core.Entities.Strategy;
+using AlgoTrading.Core.Enums;
+using AlgoTrading.Core.Interfaces.Repositories;
+using AlgoTrading.Infrastructure.Persistence;
+using AlgoTrading.Infrastructure.Persistence.Repositories;
+using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using NSubstitute;
+using Xunit;
+
+namespace AlgoTrading.IntegrationTests.Services.Strategy;
+
+/// <summary>
+/// Integration tests for Strategy CRUD operations
+/// Tests the complete flow from service through repository to database
+/// </summary>
+public class StrategyCRUDIntegrationTests : IDisposable
+{
+    private readonly AlgoTradingDbContext _dbContext;
+    private readonly IStrategyRepository _strategyRepository;
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly StrategyService _sut;
+
+    public StrategyCRUDIntegrationTests()
+    {
+        // Setup InMemory database
+        var options = new DbContextOptionsBuilder<AlgoTradingDbContext>()
+            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .Options;
+
+        _dbContext = new AlgoTradingDbContext(options);
+
+        // Setup repositories
+        _strategyRepository = new StrategyRepository(_dbContext);
+        _unitOfWork = _dbContext; // DbContext implements IUnitOfWork
+
+        // Setup service
+        var logger = Substitute.For<ILogger<StrategyService>>();
+        _sut = new StrategyService(_strategyRepository, _unitOfWork, logger);
+    }
+
+    public void Dispose()
+    {
+        _dbContext.Database.EnsureDeleted();
+        _dbContext.Dispose();
+    }
+
+    #region Create-Read-Update-Delete Flow Tests
+
+    [Fact]
+    public async Task CompleteStrategyLifecycle_ShouldExecuteAllOperationsSuccessfully()
+    {
+        // 1. CREATE
+        var createResult = await _sut.CreateStrategyAsync(
+            "Integration Test Strategy",
+            "Test Description",
+            StrategyType.Momentum,
+            "TestUser");
+
+        createResult.IsError.Should().BeFalse();
+        var strategyId = createResult.Value.Id.Value;
+
+        // 2. READ
+        var getResult = await _sut.GetStrategyByIdAsync(strategyId);
+        getResult.IsError.Should().BeFalse();
+        getResult.Value.Name.Should().Be("Integration Test Strategy");
+        getResult.Value.Status.Should().Be(Core.Entities.Strategy.StrategyStatus.Draft);
+
+        // 3. ADD RULES
+        var addRuleResult = await _sut.AddRuleAsync(
+            strategyId,
+            "Entry Rule",
+            "Buy when condition met",
+            RuleType.Entry,
+            "price > sma(20)",
+            1);
+
+        addRuleResult.IsError.Should().BeFalse();
+        addRuleResult.Value.Rules.Should().HaveCount(1);
+
+        // 4. SET RISK PARAMETERS
+        var setRiskResult = await _sut.SetRiskParametersAsync(
+            strategyId,
+            15m,  // Max position 15%
+            3m,   // Stop loss 3%
+            10m); // Take profit 10%
+
+        setRiskResult.IsError.Should().BeFalse();
+        setRiskResult.Value.MaxPositionSizePercent.Should().Be(15m);
+
+        // 5. ACTIVATE
+        var activateResult = await _sut.ActivateStrategyAsync(strategyId);
+        activateResult.IsError.Should().BeFalse();
+        activateResult.Value.Status.Should().Be(Core.Entities.Strategy.StrategyStatus.Active);
+        activateResult.Value.LastActivatedAt.Should().NotBeNull();
+
+        // 6. UPDATE STATISTICS
+        var updateStatsResult = await _sut.UpdateStrategyStatisticsAsync(
+            strategyId,
+            totalTrades: 1,
+            winningTrades: 1,
+            losingTrades: 0,
+            totalProfitLoss: 5000m,
+            averageProfitLoss: 5000m);
+        updateStatsResult.IsError.Should().BeFalse();
+        updateStatsResult.Value.TotalTrades.Should().Be(1);
+        updateStatsResult.Value.WinningTrades.Should().Be(1);
+        updateStatsResult.Value.TotalProfitLoss.Should().Be(5000m);
+
+        // 7. DEACTIVATE
+        var deactivateResult = await _sut.DeactivateStrategyAsync(strategyId, "Test completed");
+        deactivateResult.IsError.Should().BeFalse();
+        deactivateResult.Value.Status.Should().Be(Core.Entities.Strategy.StrategyStatus.Inactive);
+
+        // 8. DELETE
+        var deleteResult = await _sut.DeleteStrategyAsync(strategyId);
+        deleteResult.IsError.Should().BeFalse();
+
+        // 9. VERIFY DELETION
+        var getAfterDeleteResult = await _sut.GetStrategyByIdAsync(strategyId);
+        getAfterDeleteResult.IsError.Should().BeTrue();
+        getAfterDeleteResult.FirstError.Type.Should().Be(ErrorOr.ErrorType.NotFound);
+    }
+
+    #endregion
+
+    #region Create Tests
+
+    [Fact]
+    public async Task CreateStrategy_ShouldPersistToDatabase()
+    {
+        // Arrange
+        var name = "Persistence Test Strategy";
+        var description = "Testing database persistence";
+        var type = StrategyType.Trend;
+        var createdBy = "TestUser";
+
+        // Act
+        var result = await _sut.CreateStrategyAsync(name, description, type, createdBy);
+
+        // Assert
+        result.IsError.Should().BeFalse();
+
+        // Verify in database
+        var strategyFromDb = await _dbContext.Strategies
+            .FirstOrDefaultAsync(s => s.Id == result.Value.Id);
+
+        strategyFromDb.Should().NotBeNull();
+        strategyFromDb!.Name.Should().Be(name);
+        strategyFromDb.Description.Should().Be(description);
+        strategyFromDb.Type.Should().Be(Core.Entities.Strategy.StrategyType.Trend);
+    }
+
+    [Fact]
+    public async Task CreateMultipleStrategies_ShouldAllPersist()
+    {
+        // Arrange & Act
+        await _sut.CreateStrategyAsync("Strategy 1", "Desc 1", StrategyType.Momentum, "User1");
+        await _sut.CreateStrategyAsync("Strategy 2", "Desc 2", StrategyType.Trend, "User2");
+        await _sut.CreateStrategyAsync("Strategy 3", "Desc 3", StrategyType.MeanReversion, "User3");
+
+        // Assert
+        var result = await _sut.GetAllStrategiesAsync();
+        result.IsError.Should().BeFalse();
+        result.Value.Should().HaveCount(3);
+    }
+
+    #endregion
+
+    #region Update Tests
+
+    [Fact]
+    public async Task UpdateRiskParameters_ShouldPersistChanges()
+    {
+        // Arrange
+        var createResult = await _sut.CreateStrategyAsync(
+            "Test Strategy",
+            "Description",
+            StrategyType.Momentum,
+            "User");
+
+        var strategyId = createResult.Value.Id.Value;
+
+        // Act
+        var updateResult = await _sut.SetRiskParametersAsync(strategyId, 20m, 5m, 15m);
+
+        // Assert
+        updateResult.IsError.Should().BeFalse();
+
+        // Verify persistence
+        var strategyFromDb = await _dbContext.Strategies.FindAsync(strategyId);
+        strategyFromDb.Should().NotBeNull();
+        strategyFromDb!.MaxPositionSizePercent.Should().Be(20m);
+        strategyFromDb.StopLossPercent.Should().Be(5m);
+        strategyFromDb.TakeProfitPercent.Should().Be(15m);
+    }
+
+    [Fact]
+    public async Task AddMultipleRules_ShouldAllPersist()
+    {
+        // Arrange
+        var createResult = await _sut.CreateStrategyAsync(
+            "Multi-Rule Strategy",
+            "Description",
+            StrategyType.Momentum,
+            "User");
+
+        var strategyId = createResult.Value.Id.Value;
+
+        // Act - Add 3 rules
+        await _sut.AddRuleAsync(strategyId, "Entry Rule", "Entry Description", RuleType.Entry, "condition1", 1);
+        await _sut.AddRuleAsync(strategyId, "Exit Rule", "Exit Description", RuleType.Exit, "condition2", 2);
+        await _sut.AddRuleAsync(strategyId, "Filter Rule", "Filter Description", RuleType.Filter, "condition3", 3);
+
+        // Assert
+        var result = await _sut.GetStrategyWithRulesAsync(strategyId);
+        result.IsError.Should().BeFalse();
+        result.Value.Rules.Should().HaveCount(3);
+
+        // Verify in database
+        var strategyFromDb = await _dbContext.Strategies
+            .Include(s => s.Rules)
+            .FirstOrDefaultAsync(s => s.Id == strategyId);
+
+        strategyFromDb.Should().NotBeNull();
+        strategyFromDb!.Rules.Should().HaveCount(3);
+    }
+
+    #endregion
+
+    #region Clone Tests
+
+    [Fact]
+    public async Task CloneStrategy_ShouldCreateIndependentCopy()
+    {
+        // Arrange - Create original with rules
+        var originalResult = await _sut.CreateStrategyAsync(
+            "Original Strategy",
+            "Original Description",
+            StrategyType.Momentum,
+            "User");
+
+        var originalId = originalResult.Value.Id.Value;
+
+        await _sut.AddRuleAsync(originalId, "Rule1", "Desc1", RuleType.Entry, "condition", 1);
+        await _sut.SetRiskParametersAsync(originalId, 15m, 3m, 10m);
+
+        // Act - Clone
+        var cloneResult = await _sut.CloneStrategyAsync(originalId, "Cloned Strategy", "User");
+
+        // Assert
+        cloneResult.IsError.Should().BeFalse();
+
+        var clonedId = cloneResult.Value.Id.Value;
+        clonedId.Should().NotBe(originalId);
+
+        // Verify both strategies exist independently
+        var original = await _sut.GetStrategyWithRulesAsync(originalId);
+        var cloned = await _sut.GetStrategyWithRulesAsync(clonedId);
+
+        original.IsError.Should().BeFalse();
+        cloned.IsError.Should().BeFalse();
+
+        cloned.Value.Name.Should().Be("Cloned Strategy");
+        cloned.Value.Rules.Should().HaveCount(1);
+        cloned.Value.MaxPositionSizePercent.Should().Be(15m);
+
+        // Modify cloned should not affect original
+        await _sut.SetRiskParametersAsync(clonedId, 25m, 5m, 20m);
+
+        var originalAfter = await _sut.GetStrategyByIdAsync(originalId);
+        originalAfter.Value.MaxPositionSizePercent.Should().Be(15m); // Unchanged
+    }
+
+    #endregion
+
+    #region Query Tests
+
+    [Fact]
+    public async Task GetStrategiesByStatus_ShouldFilterCorrectly()
+    {
+        // Arrange - Create strategies with different statuses
+        var strategy1 = await _sut.CreateStrategyAsync("Strategy1", "Desc1", StrategyType.Momentum, "User");
+        var strategy2 = await _sut.CreateStrategyAsync("Strategy2", "Desc2", StrategyType.Trend, "User");
+        var strategy3 = await _sut.CreateStrategyAsync("Strategy3", "Desc3", StrategyType.MeanReversion, "User");
+
+        // Add rules and activate some
+        await _sut.AddRuleAsync(strategy1.Value.Id.Value, "Rule", "Desc", RuleType.Entry, "cond", 1);
+        await _sut.AddRuleAsync(strategy2.Value.Id.Value, "Rule", "Desc", RuleType.Entry, "cond", 1);
+
+        await _sut.ActivateStrategyAsync(strategy1.Value.Id.Value);
+        await _sut.ActivateStrategyAsync(strategy2.Value.Id.Value);
+
+        // Act
+        var draftResult = await _sut.GetStrategiesByStatusAsync(StrategyStatus.Draft);
+        var activeResult = await _sut.GetStrategiesByStatusAsync(StrategyStatus.Active);
+
+        // Assert
+        draftResult.IsError.Should().BeFalse();
+        draftResult.Value.Should().HaveCount(1);
+        draftResult.Value.First().Name.Should().Be("Strategy3");
+
+        activeResult.IsError.Should().BeFalse();
+        activeResult.Value.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public async Task GetActiveStrategies_ShouldReturnOnlyActiveOnes()
+    {
+        // Arrange
+        var strategy1 = await _sut.CreateStrategyAsync("Active1", "Desc", StrategyType.Momentum, "User");
+        var strategy2 = await _sut.CreateStrategyAsync("Active2", "Desc", StrategyType.Trend, "User");
+        var strategy3 = await _sut.CreateStrategyAsync("Draft", "Desc", StrategyType.MeanReversion, "User");
+
+        await _sut.AddRuleAsync(strategy1.Value.Id.Value, "Rule", "Desc", RuleType.Entry, "cond", 1);
+        await _sut.AddRuleAsync(strategy2.Value.Id.Value, "Rule", "Desc", RuleType.Entry, "cond", 1);
+
+        await _sut.ActivateStrategyAsync(strategy1.Value.Id.Value);
+        await _sut.ActivateStrategyAsync(strategy2.Value.Id.Value);
+
+        // Act
+        var result = await _sut.GetActiveStrategiesAsync();
+
+        // Assert
+        result.IsError.Should().BeFalse();
+        result.Value.Should().HaveCount(2);
+        result.Value.Should().AllSatisfy(s =>
+            s.Status.Should().Be(Core.Entities.Strategy.StrategyStatus.Active));
+    }
+
+    #endregion
+
+    #region Validation Tests
+
+    [Fact]
+    public async Task ValidateStrategy_WithCompleteSetup_ShouldPass()
+    {
+        // Arrange
+        var createResult = await _sut.CreateStrategyAsync(
+            "Valid Strategy",
+            "Description",
+            StrategyType.Momentum,
+            "User");
+
+        var strategyId = createResult.Value.Id.Value;
+
+        await _sut.AddRuleAsync(strategyId, "Entry", "Entry Rule", RuleType.Entry, "condition", 1);
+        await _sut.AddRuleAsync(strategyId, "Exit", "Exit Rule", RuleType.Exit, "condition", 2);
+
+        // Act
+        var validationResult = await _sut.ValidateStrategyAsync(strategyId);
+
+        // Assert
+        validationResult.IsError.Should().BeFalse();
+        validationResult.Value.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ValidateStrategy_WithoutRules_ShouldFail()
+    {
+        // Arrange
+        var createResult = await _sut.CreateStrategyAsync(
+            "Invalid Strategy",
+            "Description",
+            StrategyType.Momentum,
+            "User");
+
+        var strategyId = createResult.Value.Id.Value;
+
+        // Act
+        var validationResult = await _sut.ValidateStrategyAsync(strategyId);
+
+        // Assert
+        validationResult.IsError.Should().BeTrue();
+        validationResult.FirstError.Code.Should().Be("Strategy.ValidationFailed");
+    }
+
+    #endregion
+
+    #region Performance Tracking Tests
+
+    [Fact]
+    public async Task UpdatePerformance_ShouldAccumulateCorrectly()
+    {
+        // Arrange
+        var createResult = await _sut.CreateStrategyAsync(
+            "Performance Test",
+            "Description",
+            StrategyType.Momentum,
+            "User");
+
+        var strategyId = createResult.Value.Id.Value;
+
+        // Act - Update statistics for 10 trades: 7 wins, 3 losses
+        await _sut.UpdateStrategyStatisticsAsync(
+            strategyId,
+            totalTrades: 10,
+            winningTrades: 7,
+            losingTrades: 3,
+            totalProfitLoss: 5500m, // 7*1000 - 3*500
+            averageProfitLoss: 550m);
+
+        // Assert
+        var result = await _sut.GetStrategyByIdAsync(strategyId);
+        result.IsError.Should().BeFalse();
+
+        var strategy = result.Value;
+        strategy.TotalTrades.Should().Be(10);
+        strategy.WinningTrades.Should().Be(7);
+        strategy.LosingTrades.Should().Be(3);
+        strategy.WinRate.Should().Be(70m);
+        strategy.TotalProfitLoss.Should().Be(5500m);
+
+        // Verify persistence
+        var strategyFromDb = await _dbContext.Strategies.FindAsync(strategyId);
+        strategyFromDb!.TotalTrades.Should().Be(10);
+        strategyFromDb.TotalProfitLoss.Should().Be(5500m);
+    }
+
+    #endregion
+
+    #region Concurrency Tests
+
+    [Fact]
+    public async Task MultipleSimultaneousUpdates_ShouldAllPersist()
+    {
+        // Arrange
+        var strategies = new List<Guid>();
+        for (int i = 0; i < 5; i++)
+        {
+            var result = await _sut.CreateStrategyAsync(
+                $"Strategy{i}",
+                "Description",
+                StrategyType.Momentum,
+                "User");
+
+            strategies.Add(result.Value.Id.Value);
+        }
+
+        // Act - Update all simultaneously
+        var tasks = strategies.Select(id =>
+            _sut.SetRiskParametersAsync(id, 10m, 2m, 5m));
+
+        await Task.WhenAll(tasks);
+
+        // Assert - All should be updated
+        foreach (var id in strategies)
+        {
+            var result = await _sut.GetStrategyByIdAsync(id);
+            result.IsError.Should().BeFalse();
+            result.Value.MaxPositionSizePercent.Should().Be(10m);
+        }
+    }
+
+    #endregion
+}

@@ -1,5 +1,5 @@
 using AlgoTrading.Core.Entities.Strategy;
-using AlgoTrading.Core.Enums;
+using AlgoTrading.Core.ValueObjects;
 
 namespace AlgoTrading.Core.Interfaces.Repositories;
 
@@ -9,7 +9,7 @@ namespace AlgoTrading.Core.Interfaces.Repositories;
 ///           복잡한 Aggregate Root 조회를 지원합니다. Strategy Context의 핵심 인터페이스입니다.
 /// Applied technology patterns : Repository Pattern, Aggregate Root Pattern, Lazy Loading, Domain-Driven Design
 /// </summary>
-public interface IStrategyRepository : IRepository<TradingStrategy>
+public interface IStrategyRepository : IRepository<TradingStrategy, StrategyId>
 {
     /// <summary>
     /// 이름으로 전략 조회
@@ -19,12 +19,12 @@ public interface IStrategyRepository : IRepository<TradingStrategy>
     /// <summary>
     /// 전략 상태로 전략 목록 조회
     /// </summary>
-    Task<IEnumerable<TradingStrategy>> GetByStatusAsync(Enums.StrategyStatus status, CancellationToken cancellationToken = default);
+    Task<IEnumerable<TradingStrategy>> GetByStatusAsync(StrategyStatus status, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 전략 유형으로 전략 목록 조회
     /// </summary>
-    Task<IEnumerable<TradingStrategy>> GetByTypeAsync(Enums.StrategyType type, CancellationToken cancellationToken = default);
+    Task<IEnumerable<TradingStrategy>> GetByTypeAsync(StrategyType type, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 활성화된 전략 목록 조회

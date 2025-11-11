@@ -1,0 +1,175 @@
+<UserControl x:Class="AlgoTrading.Desktop.Views.Strategy.StrategyListView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             mc:Ignorable="d"
+             d:DesignHeight="600" d:DesignWidth="1200">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Toolbar -->
+        <materialDesign:Card Grid.Row="0" Margin="8" Padding="16">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Column="0"
+                          Text="Trading Strategies"
+                          Style="{StaticResource MaterialDesignHeadline5TextBlock}"
+                          VerticalAlignment="Center"/>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Content="CREATE"
+                           Style="{StaticResource MaterialDesignRaisedButton}"
+                           Command="{Binding CreateStrategyCommand}"
+                           Margin="4"/>
+
+                    <Button Content="REFRESH"
+                           Style="{StaticResource MaterialDesignOutlinedButton}"
+                           Command="{Binding RefreshCommand}"
+                           Margin="4"/>
+                </StackPanel>
+            </Grid>
+        </materialDesign:Card>
+
+        <!-- Strategy List -->
+        <materialDesign:Card Grid.Row="1" Margin="8">
+            <DataGrid ItemsSource="{Binding Strategies}"
+                     SelectedItem="{Binding SelectedStrategy}"
+                     AutoGenerateColumns="False"
+                     CanUserAddRows="False"
+                     CanUserDeleteRows="False"
+                     IsReadOnly="True"
+                     SelectionMode="Single"
+                     materialDesign:DataGridAssist.CellPadding="8"
+                     materialDesign:DataGridAssist.ColumnHeaderPadding="8">
+
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Name"
+                                       Binding="{Binding Name}"
+                                       Width="200"/>
+
+                    <DataGridTextColumn Header="Description"
+                                       Binding="{Binding Description}"
+                                       Width="300"/>
+
+                    <DataGridTextColumn Header="Type"
+                                       Binding="{Binding Type}"
+                                       Width="120"/>
+
+                    <DataGridTextColumn Header="Status"
+                                       Binding="{Binding Status}"
+                                       Width="100">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="FontWeight" Value="Bold"/>
+                                <Style.Triggers>
+                                    <Trigger Property="Text" Value="Active">
+                                        <Setter Property="Foreground" Value="Green"/>
+                                    </Trigger>
+                                    <Trigger Property="Text" Value="Inactive">
+                                        <Setter Property="Foreground" Value="Gray"/>
+                                    </Trigger>
+                                    <Trigger Property="Text" Value="Testing">
+                                        <Setter Property="Foreground" Value="Orange"/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+
+                    <DataGridTextColumn Header="Total Trades"
+                                       Binding="{Binding TotalTrades}"
+                                       Width="100"/>
+
+                    <DataGridTextColumn Header="Win Rate %"
+                                       Binding="{Binding WinRate, StringFormat=N2}"
+                                       Width="100"/>
+
+                    <DataGridTextColumn Header="Total P&amp;L"
+                                       Binding="{Binding TotalPnL, StringFormat=N0}"
+                                       Width="120">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="FontWeight" Value="Bold"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding TotalPnL, Converter={StaticResource IsPositiveConverter}}" Value="True">
+                                        <Setter Property="Foreground" Value="Green"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding TotalPnL, Converter={StaticResource IsNegativeConverter}}" Value="True">
+                                        <Setter Property="Foreground" Value="Red"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+
+                    <DataGridTextColumn Header="Created"
+                                       Binding="{Binding CreatedAt, StringFormat=yyyy-MM-dd}"
+                                       Width="100"/>
+                </DataGrid.Columns>
+            </DataGrid>
+        </materialDesign:Card>
+
+        <!-- Action Buttons -->
+        <materialDesign:Card Grid.Row="2" Margin="8" Padding="16">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Content="EDIT"
+                       Style="{StaticResource MaterialDesignOutlinedButton}"
+                       Command="{Binding EditStrategyCommand}"
+                       IsEnabled="{Binding IsStrategySelected}"
+                       Margin="4"/>
+
+                <Button Content="ACTIVATE"
+                       Style="{StaticResource MaterialDesignRaisedButton}"
+                       Command="{Binding ActivateStrategyCommand}"
+                       IsEnabled="{Binding IsStrategySelected}"
+                       Margin="4"/>
+
+                <Button Content="DEACTIVATE"
+                       Style="{StaticResource MaterialDesignOutlinedButton}"
+                       Command="{Binding DeactivateStrategyCommand}"
+                       IsEnabled="{Binding IsStrategySelected}"
+                       Margin="4"/>
+
+                <Button Content="CLONE"
+                       Style="{StaticResource MaterialDesignOutlinedButton}"
+                       Command="{Binding CloneStrategyCommand}"
+                       IsEnabled="{Binding IsStrategySelected}"
+                       Margin="4"/>
+
+                <Button Content="DELETE"
+                       Style="{StaticResource MaterialDesignOutlinedButton}"
+                       Command="{Binding DeleteStrategyCommand}"
+                       IsEnabled="{Binding IsStrategySelected}"
+                       Foreground="Red"
+                       Margin="4"/>
+            </StackPanel>
+        </materialDesign:Card>
+
+        <!-- Busy Indicator -->
+        <Grid Grid.Row="0" Grid.RowSpan="3"
+              Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}"
+              Background="#80000000">
+            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                <ProgressBar Style="{StaticResource MaterialDesignCircularProgressBar}"
+                           IsIndeterminate="True"
+                           Width="60" Height="60"/>
+                <TextBlock Text="{Binding BusyMessage}"
+                          Foreground="White"
+                          FontSize="16"
+                          Margin="0,16,0,0"
+                          HorizontalAlignment="Center"/>
+            </StackPanel>
+        </Grid>
+    </Grid>
+</UserControl>

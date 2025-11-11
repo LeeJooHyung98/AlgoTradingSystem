@@ -1,25 +1,152 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <ItemGroup>
-    <ProjectReference Include="..\..\1.Core\AlgoTrading.Core\AlgoTrading.Core.csproj" />
-    <ProjectReference Include="..\..\5.Shared\AlgoTrading.Shared\AlgoTrading.Shared.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="ErrorOr" Version="2.0.1" />
-    <PackageReference Include="FluentValidation" Version="12.0.0" />
-    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.0.0" />
-    <PackageReference Include="LanguageExt.Core" Version="4.4.9" />
-    <PackageReference Include="Mapster" Version="7.4.0" />
-    <PackageReference Include="Mapster.DependencyInjection" Version="1.0.1" />
-    <PackageReference Include="MediatR" Version="13.1.0" />
-    <PackageReference Include="System.Reactive" Version="6.1.0" />
-  </ItemGroup>
-
+  <!-- ============================================ -->
+  <!-- 프로젝트 기본 설정 -->
+  <!-- ============================================ -->
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>12.0</LangVersion>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+
+    <!-- 프로젝트 메타데이터 -->
+    <AssemblyName>AlgoTrading.Application</AssemblyName>
+    <RootNamespace>AlgoTrading.Application</RootNamespace>
+    <Product>AlgoTrading System - Application Layer</Product>
+    <Description>Application layer implementing CQRS patterns, business logic orchestration, and application services for the AlgoTrading system</Description>
+    <Copyright>Copyright © 2025</Copyright>
+    <Version>1.0.0</Version>
+
+    <!-- 코드 품질 및 분석 -->
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest</AnalysisLevel>
   </PropertyGroup>
+
+  <!-- ============================================ -->
+  <!-- 프로젝트 참조 (Clean Architecture 의존성) -->
+  <!-- ============================================ -->
+  <ItemGroup>
+    <!-- Core Domain Layer - 핵심 비즈니스 로직 -->
+    <ProjectReference Include="..\..\1.Core\AlgoTrading.Core\AlgoTrading.Core.csproj" />
+
+    <!-- Shared Library - 공통 유틸리티 및 확장 -->
+    <ProjectReference Include="..\..\5.Shared\AlgoTrading.Shared\AlgoTrading.Shared.csproj" />
+    <ProjectReference Include="..\..\1.Core\AlgoTrading.TechnicalIndicators\AlgoTrading.TechnicalIndicators.csproj" />
+  </ItemGroup>
+
+  <!-- ============================================ -->
+  <!-- CQRS & Mediator Pattern -->
+  <!-- ============================================ -->
+  <ItemGroup>
+    <!-- MediatR - CQRS Command/Query 중재자 패턴 (12.x 이상은 DI Extensions 내장) -->
+    <PackageReference Include="MediatR" Version="12.4.1" />
+  </ItemGroup>
+
+  <!-- ============================================ -->
+  <!-- Validation (FluentValidation) -->
+  <!-- ============================================ -->
+  <ItemGroup>
+    <!-- FluentValidation - 유효성 검증 라이브러리 -->
+    <PackageReference Include="FluentValidation" Version="11.10.0" />
+
+    <!-- FluentValidation DI - ASP.NET Core 통합 -->
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="11.10.0" />
+
+    <!-- FluentValidation ASP.NET Core - 미들웨어 통합 -->
+    <PackageReference Include="FluentValidation.AspNetCore" Version="11.3.0" />
+  </ItemGroup>
+
+  <!-- ============================================ -->
+  <!-- Object Mapping -->
+  <!-- ============================================ -->
+  <ItemGroup>
+    <!-- Mapster - 고성능 객체 매핑 (AutoMapper 대안) -->
+    <PackageReference Include="Mapster" Version="7.4.0" />
+
+    <!-- Mapster DI - 의존성 주입 지원 -->
+    <PackageReference Include="Mapster.DependencyInjection" Version="1.0.1" />
+  </ItemGroup>
+
+  <!-- ============================================ -->
+  <!-- Functional Programming & Result Pattern -->
+  <!-- ============================================ -->
+  <ItemGroup>
+    <!-- ErrorOr - Result 패턴 구현 (Railway-Oriented Programming) -->
+    <PackageReference Include="ErrorOr" Version="2.0.1" />
+
+    <!-- LanguageExt - 함수형 프로그래밍 헬퍼 (Option, Either, Try 등) -->
+    <PackageReference Include="LanguageExt.Core" Version="4.4.9" />
+  </ItemGroup>
+
+  <!-- ============================================ -->
+  <!-- Reactive Extensions -->
+  <!-- ============================================ -->
+  <ItemGroup>
+    <!-- System.Reactive - 반응형 프로그래밍 (실시간 데이터 스트림) -->
+    <PackageReference Include="System.Reactive" Version="6.0.1" />
+
+    <!-- System.Reactive.Linq - LINQ to Events -->
+    <PackageReference Include="System.Reactive.Linq" Version="6.0.1" />
+  </ItemGroup>
+
+  <!-- ============================================ -->
+  <!-- Microsoft Extensions (DI, Logging, Options) -->
+  <!-- ============================================ -->
+  <ItemGroup>
+    <!-- Dependency Injection Abstractions -->
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.2" />
+
+    <!-- Logging Abstractions -->
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.2" />
+
+    <!-- Options Pattern -->
+    <PackageReference Include="Microsoft.Extensions.Options" Version="8.0.2" />
+
+    <!-- Configuration Binder -->
+    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="8.0.2" />
+  </ItemGroup>
+
+  <!-- ============================================ -->
+  <!-- Performance & Diagnostics -->
+  <!-- ============================================ -->
+  <ItemGroup>
+    <!-- Memory Caching -->
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="8.0.1" />
+
+    <!-- Distributed Caching Abstractions -->
+    <PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="8.0.0" />
+
+    <!-- System Diagnostics -->
+    <PackageReference Include="System.Diagnostics.DiagnosticSource" Version="8.0.1" />
+  </ItemGroup>
+
+  <!-- ============================================ -->
+  <!-- Data Annotations & Validation -->
+  <!-- ============================================ -->
+  <ItemGroup>
+    <!-- Component Model Annotations -->
+    <PackageReference Include="System.ComponentModel.Annotations" Version="5.0.0" />
+  </ItemGroup>
+
+  <!-- ============================================ -->
+  <!-- Polly (Resilience & Transient Fault Handling) -->
+  <!-- ============================================ -->
+  <ItemGroup>
+    <!-- Polly - Retry, Circuit Breaker, Timeout 정책 -->
+    <PackageReference Include="Polly" Version="8.5.0" />
+
+    <!-- Polly Extensions for HTTP -->
+    <PackageReference Include="Microsoft.Extensions.Http.Polly" Version="8.0.11" />
+  </ItemGroup>
+
+  <!-- ============================================ -->
+  <!-- CSV & Data Export (백테스트 결과 내보내기) -->
+  <!-- ============================================ -->
+  <ItemGroup>
+    <!-- CsvHelper - CSV 파일 읽기/쓰기 -->
+    <PackageReference Include="CsvHelper" Version="33.0.1" />
+  </ItemGroup>
 
 </Project>

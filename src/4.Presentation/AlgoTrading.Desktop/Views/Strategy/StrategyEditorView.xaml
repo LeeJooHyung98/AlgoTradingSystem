@@ -1,0 +1,284 @@
+<UserControl x:Class="AlgoTrading.Desktop.Views.Strategy.StrategyEditorView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             mc:Ignorable="d"
+             d:DesignHeight="700" d:DesignWidth="1200">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <materialDesign:Card Grid.Row="0" Margin="8" Padding="16">
+            <TextBlock Text="Strategy Editor"
+                      Style="{StaticResource MaterialDesignHeadline5TextBlock}"/>
+        </materialDesign:Card>
+
+        <!-- Editor Content -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="8">
+                <!-- Basic Information -->
+                <materialDesign:Card Margin="0,0,0,8" Padding="16">
+                    <StackPanel>
+                        <TextBlock Text="Basic Information"
+                                  Style="{StaticResource MaterialDesignHeadline6TextBlock}"
+                                  Margin="0,0,0,16"/>
+
+                        <TextBox materialDesign:HintAssist.Hint="Strategy Name"
+                                Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
+                                Margin="0,0,0,16"/>
+
+                        <TextBox materialDesign:HintAssist.Hint="Description"
+                                Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}"
+                                MinLines="3"
+                                MaxLines="5"
+                                TextWrapping="Wrap"
+                                AcceptsReturn="True"
+                                VerticalScrollBarVisibility="Auto"
+                                Margin="0,0,0,16"/>
+
+                        <ComboBox materialDesign:HintAssist.Hint="Strategy Type"
+                                 Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                                 ItemsSource="{Binding StrategyTypes}"
+                                 SelectedItem="{Binding SelectedStrategyType}"
+                                 Margin="0,0,0,8"/>
+                    </StackPanel>
+                </materialDesign:Card>
+
+                <!-- Risk Parameters -->
+                <materialDesign:Card Margin="0,0,0,8" Padding="16">
+                    <StackPanel>
+                        <TextBlock Text="Risk Parameters"
+                                  Style="{StaticResource MaterialDesignHeadline6TextBlock}"
+                                  Margin="0,0,0,16"/>
+
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="16"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="16"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBox Grid.Column="0"
+                                    materialDesign:HintAssist.Hint="Max Position Size %"
+                                    Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                    Text="{Binding MaxPositionSize, UpdateSourceTrigger=PropertyChanged}"/>
+
+                            <TextBox Grid.Column="2"
+                                    materialDesign:HintAssist.Hint="Stop Loss %"
+                                    Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                    Text="{Binding StopLoss, UpdateSourceTrigger=PropertyChanged}"/>
+
+                            <TextBox Grid.Column="4"
+                                    materialDesign:HintAssist.Hint="Take Profit %"
+                                    Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                    Text="{Binding TakeProfit, UpdateSourceTrigger=PropertyChanged}"/>
+                        </Grid>
+                    </StackPanel>
+                </materialDesign:Card>
+
+                <!-- Target Stocks -->
+                <materialDesign:Card Margin="0,0,0,8" Padding="16">
+                    <StackPanel>
+                        <TextBlock Text="Target Stocks"
+                                  Style="{StaticResource MaterialDesignHeadline6TextBlock}"
+                                  Margin="0,0,0,16"/>
+
+                        <TextBox materialDesign:HintAssist.Hint="Stock Codes (comma-separated, e.g., 005930, 000660)"
+                                Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                Text="{Binding TargetStocks, UpdateSourceTrigger=PropertyChanged}"
+                                MinLines="2"
+                                MaxLines="4"
+                                TextWrapping="Wrap"
+                                AcceptsReturn="True"/>
+                    </StackPanel>
+                </materialDesign:Card>
+
+                <!-- Trading Rules -->
+                <materialDesign:Card Margin="0,0,0,8" Padding="16">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="200"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Rules Header -->
+                        <Grid Grid.Row="0" Margin="0,0,0,16">
+                            <TextBlock Text="Trading Rules"
+                                      Style="{StaticResource MaterialDesignHeadline6TextBlock}"
+                                      VerticalAlignment="Center"/>
+
+                            <Button Content="ADD RULE"
+                                   Style="{StaticResource MaterialDesignRaisedButton}"
+                                   Command="{Binding AddRuleCommand}"
+                                   HorizontalAlignment="Right"/>
+                        </Grid>
+
+                        <!-- Rules List -->
+                        <DataGrid Grid.Row="1"
+                                 ItemsSource="{Binding Rules}"
+                                 SelectedItem="{Binding SelectedRule}"
+                                 AutoGenerateColumns="False"
+                                 CanUserAddRows="False"
+                                 CanUserDeleteRows="False"
+                                 IsReadOnly="True"
+                                 SelectionMode="Single"
+                                 materialDesign:DataGridAssist.CellPadding="8"
+                                 materialDesign:DataGridAssist.ColumnHeaderPadding="8">
+
+                            <DataGrid.Columns>
+                                <DataGridCheckBoxColumn Header="Enabled"
+                                                       Binding="{Binding IsEnabled}"
+                                                       Width="80"/>
+
+                                <DataGridTextColumn Header="Name"
+                                                   Binding="{Binding Name}"
+                                                   Width="150"/>
+
+                                <DataGridTextColumn Header="Type"
+                                                   Binding="{Binding Type}"
+                                                   Width="120"/>
+
+                                <DataGridTextColumn Header="Priority"
+                                                   Binding="{Binding Priority}"
+                                                   Width="80"/>
+
+                                <DataGridTextColumn Header="Description"
+                                                   Binding="{Binding Description}"
+                                                   Width="*"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                        <!-- Rule Editor -->
+                        <Border Grid.Row="2" Margin="0,16,0,0"
+                               BorderBrush="{DynamicResource MaterialDesignDivider}"
+                               BorderThickness="0,1,0,0"
+                               Padding="0,16,0,0">
+                            <Grid IsEnabled="{Binding IsRuleSelected}">
+                                <TextBlock Text="Select a rule to edit"
+                                          HorizontalAlignment="Center"
+                                          VerticalAlignment="Center"
+                                          Foreground="{DynamicResource MaterialDesignBodyLight}"
+                                          Visibility="{Binding IsRuleSelected, Converter={StaticResource InverseBooleanToVisibilityConverter}}"/>
+
+                                <StackPanel Visibility="{Binding IsRuleSelected, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    <TextBlock Text="Rule Details"
+                                              Style="{StaticResource MaterialDesignSubtitle1TextBlock}"
+                                              Margin="0,0,0,16"/>
+
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="2*"/>
+                                            <ColumnDefinition Width="16"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="16"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <TextBox Grid.Column="0"
+                                                materialDesign:HintAssist.Hint="Rule Name"
+                                                Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                                Text="{Binding SelectedRule.Name, UpdateSourceTrigger=PropertyChanged}"
+                                                Margin="0,0,0,16"/>
+
+                                        <ComboBox Grid.Column="2"
+                                                 materialDesign:HintAssist.Hint="Rule Type"
+                                                 Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                                                 SelectedValue="{Binding SelectedRule.Type}"
+                                                 Margin="0,0,0,16">
+                                            <ComboBoxItem Content="EntryLong"/>
+                                            <ComboBoxItem Content="EntryShort"/>
+                                            <ComboBoxItem Content="ExitLong"/>
+                                            <ComboBoxItem Content="ExitShort"/>
+                                            <ComboBoxItem Content="Filter"/>
+                                            <ComboBoxItem Content="StopLoss"/>
+                                            <ComboBoxItem Content="TakeProfit"/>
+                                        </ComboBox>
+
+                                        <TextBox Grid.Column="4"
+                                                materialDesign:HintAssist.Hint="Priority"
+                                                Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                                Text="{Binding SelectedRule.Priority, UpdateSourceTrigger=PropertyChanged}"
+                                                Margin="0,0,0,16"/>
+                                    </Grid>
+
+                                    <TextBox materialDesign:HintAssist.Hint="Description"
+                                            Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                            Text="{Binding SelectedRule.Description, UpdateSourceTrigger=PropertyChanged}"
+                                            MinLines="2"
+                                            TextWrapping="Wrap"
+                                            Margin="0,0,0,16"/>
+
+                                    <TextBox materialDesign:HintAssist.Hint="Condition (C# Expression)"
+                                            Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                            Text="{Binding SelectedRule.Condition, UpdateSourceTrigger=PropertyChanged}"
+                                            MinLines="4"
+                                            MaxLines="8"
+                                            TextWrapping="Wrap"
+                                            AcceptsReturn="True"
+                                            FontFamily="Consolas"
+                                            VerticalScrollBarVisibility="Auto"
+                                            Margin="0,0,0,16"/>
+
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                        <Button Content="SAVE RULE"
+                                               Style="{StaticResource MaterialDesignRaisedButton}"
+                                               Command="{Binding SaveRuleCommand}"
+                                               Margin="0,0,8,0"/>
+
+                                        <Button Content="REMOVE RULE"
+                                               Style="{StaticResource MaterialDesignOutlinedButton}"
+                                               Command="{Binding RemoveRuleCommand}"
+                                               Foreground="Red"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </Grid>
+                </materialDesign:Card>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Action Buttons -->
+        <materialDesign:Card Grid.Row="2" Margin="8" Padding="16">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Content="SAVE STRATEGY"
+                       Style="{StaticResource MaterialDesignRaisedButton}"
+                       Command="{Binding SaveCommand}"
+                       Margin="0,0,8,0"/>
+
+                <Button Content="CANCEL"
+                       Style="{StaticResource MaterialDesignOutlinedButton}"
+                       Command="{Binding CancelCommand}"/>
+            </StackPanel>
+        </materialDesign:Card>
+
+        <!-- Busy Indicator -->
+        <Grid Grid.Row="0" Grid.RowSpan="3"
+              Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}"
+              Background="#80000000">
+            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                <ProgressBar Style="{StaticResource MaterialDesignCircularProgressBar}"
+                           IsIndeterminate="True"
+                           Width="60" Height="60"/>
+                <TextBlock Text="{Binding BusyMessage}"
+                          Foreground="White"
+                          FontSize="16"
+                          Margin="0,16,0,0"
+                          HorizontalAlignment="Center"/>
+            </StackPanel>
+        </Grid>
+    </Grid>
+</UserControl>

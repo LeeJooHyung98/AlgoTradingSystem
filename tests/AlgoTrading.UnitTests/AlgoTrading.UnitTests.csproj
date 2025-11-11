@@ -1,10 +1,11 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
+    <UseWPF>true</UseWPF>
   </PropertyGroup>
 
   <ItemGroup>
@@ -39,6 +40,7 @@
     <ProjectReference Include="..\..\src\1.Core\AlgoTrading.Core\AlgoTrading.Core.csproj" />
     <ProjectReference Include="..\..\src\2.Application\AlgoTrading.Application\AlgoTrading.Application.csproj" />
     <ProjectReference Include="..\..\src\3.Infrastructure\AlgoTrading.Infrastructure\AlgoTrading.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\4.Presentation\AlgoTrading.Desktop\AlgoTrading.Desktop.csproj" />
   </ItemGroup>
 
 </Project>
