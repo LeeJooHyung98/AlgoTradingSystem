@@ -3,10 +3,175 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
         xmlns:local="clr-namespace:AlgoTrading.Desktop"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
-    <Grid>
+        Title="AlgoTrading System"
+        Height="900" Width="1600"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource MaterialDesignPaper}"
+        TextElement.Foreground="{DynamicResource MaterialDesignBody}"
+        TextElement.FontWeight="Regular"
+        TextElement.FontSize="13"
+        TextOptions.TextFormattingMode="Ideal"
+        TextOptions.TextRenderingMode="Auto"
+        FontFamily="{DynamicResource MaterialDesignFont}">
 
-    </Grid>
+    <materialDesign:DialogHost Identifier="RootDialog">
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Navigation Rail -->
+            <Border Grid.Column="0"
+                   Background="{DynamicResource MaterialDesignToolBarBackground}"
+                   BorderBrush="{DynamicResource MaterialDesignDivider}"
+                   BorderThickness="0,0,1,0">
+                <Grid Width="80">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Logo/Title -->
+                    <StackPanel Grid.Row="0" Margin="0,20,0,20" HorizontalAlignment="Center">
+                        <materialDesign:PackIcon Kind="ChartLine"
+                                               Width="40" Height="40"
+                                               Foreground="{DynamicResource PrimaryHueMidBrush}"/>
+                        <TextBlock Text="AT"
+                                  FontSize="16"
+                                  FontWeight="Bold"
+                                  HorizontalAlignment="Center"
+                                  Margin="0,8,0,0"/>
+                    </StackPanel>
+
+                    <!-- Navigation Items -->
+                    <StackPanel Grid.Row="1" VerticalAlignment="Top">
+                        <!-- Dashboard -->
+                        <RadioButton x:Name="DashboardNavButton"
+                                   Style="{StaticResource MaterialDesignTabRadioButton}"
+                                   Margin="0,4"
+                                   Padding="16"
+                                   Height="80"
+                                   IsChecked="True"
+                                   Click="NavigationButton_Click"
+                                   Tag="Dashboard">
+                            <StackPanel>
+                                <materialDesign:PackIcon Kind="ViewDashboard"
+                                                       Width="24" Height="24"
+                                                       HorizontalAlignment="Center"/>
+                                <TextBlock Text="Dashboard"
+                                          FontSize="11"
+                                          HorizontalAlignment="Center"
+                                          Margin="0,8,0,0"/>
+                            </StackPanel>
+                        </RadioButton>
+
+                        <!-- Orders -->
+                        <RadioButton x:Name="OrdersNavButton"
+                                   Style="{StaticResource MaterialDesignTabRadioButton}"
+                                   Margin="0,4"
+                                   Padding="16"
+                                   Height="80"
+                                   Click="NavigationButton_Click"
+                                   Tag="Orders">
+                            <StackPanel>
+                                <materialDesign:PackIcon Kind="ShoppingOutline"
+                                                       Width="24" Height="24"
+                                                       HorizontalAlignment="Center"/>
+                                <TextBlock Text="Orders"
+                                          FontSize="11"
+                                          HorizontalAlignment="Center"
+                                          Margin="0,8,0,0"/>
+                            </StackPanel>
+                        </RadioButton>
+
+                        <!-- Strategies -->
+                        <RadioButton x:Name="StrategiesNavButton"
+                                   Style="{StaticResource MaterialDesignTabRadioButton}"
+                                   Margin="0,4"
+                                   Padding="16"
+                                   Height="80"
+                                   Click="NavigationButton_Click"
+                                   Tag="Strategies">
+                            <StackPanel>
+                                <materialDesign:PackIcon Kind="Strategy"
+                                                       Width="24" Height="24"
+                                                       HorizontalAlignment="Center"/>
+                                <TextBlock Text="Strategies"
+                                          FontSize="11"
+                                          HorizontalAlignment="Center"
+                                          Margin="0,8,0,0"/>
+                            </StackPanel>
+                        </RadioButton>
+
+                        <!-- Backtest -->
+                        <RadioButton x:Name="BacktestNavButton"
+                                   Style="{StaticResource MaterialDesignTabRadioButton}"
+                                   Margin="0,4"
+                                   Padding="16"
+                                   Height="80"
+                                   Click="NavigationButton_Click"
+                                   Tag="Backtest">
+                            <StackPanel>
+                                <materialDesign:PackIcon Kind="History"
+                                                       Width="24" Height="24"
+                                                       HorizontalAlignment="Center"/>
+                                <TextBlock Text="Backtest"
+                                          FontSize="11"
+                                          HorizontalAlignment="Center"
+                                          Margin="0,8,0,0"/>
+                            </StackPanel>
+                        </RadioButton>
+
+                        <!-- Monitor -->
+                        <RadioButton x:Name="MonitorNavButton"
+                                   Style="{StaticResource MaterialDesignTabRadioButton}"
+                                   Margin="0,4"
+                                   Padding="16"
+                                   Height="80"
+                                   Click="NavigationButton_Click"
+                                   Tag="Monitor">
+                            <StackPanel>
+                                <materialDesign:PackIcon Kind="Monitor"
+                                                       Width="24" Height="24"
+                                                       HorizontalAlignment="Center"/>
+                                <TextBlock Text="Monitor"
+                                          FontSize="11"
+                                          HorizontalAlignment="Center"
+                                          Margin="0,8,0,0"/>
+                            </StackPanel>
+                        </RadioButton>
+                    </StackPanel>
+
+                    <!-- Settings at bottom -->
+                    <RadioButton Grid.Row="2"
+                               Style="{StaticResource MaterialDesignTabRadioButton}"
+                               Margin="0,4,0,20"
+                               Padding="16"
+                               Height="80"
+                               Click="NavigationButton_Click"
+                               Tag="Settings">
+                        <StackPanel>
+                            <materialDesign:PackIcon Kind="Settings"
+                                                   Width="24" Height="24"
+                                                   HorizontalAlignment="Center"/>
+                            <TextBlock Text="Settings"
+                                      FontSize="11"
+                                      HorizontalAlignment="Center"
+                                      Margin="0,8,0,0"/>
+                        </StackPanel>
+                    </RadioButton>
+                </Grid>
+            </Border>
+
+            <!-- Content Area -->
+            <ContentControl x:Name="ContentArea"
+                          Grid.Column="1"
+                          Content="{Binding CurrentView}"/>
+        </Grid>
+    </materialDesign:DialogHost>
 </Window>

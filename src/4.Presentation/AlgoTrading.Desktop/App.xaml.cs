@@ -1,4 +1,5 @@
 ﻿using AlgoTrading.Application;
+using AlgoTrading.Desktop.Services;
 using AlgoTrading.Desktop.ViewModels;
 using AlgoTrading.Desktop.ViewModels.Strategy;
 using AlgoTrading.Infrastructure;
@@ -55,7 +56,15 @@ public partial class App : System.Windows.Application
             builder.Services.AddApplication();
             builder.Services.AddInfrastructure(builder.Configuration);
 
+            // Register HttpClient for API
+            builder.Services.AddHttpClient<IAlgoTradingApiClient, AlgoTradingApiClient>();
+
+            // Register SignalR Hub Client as Singleton (shared across app)
+            builder.Services.AddSingleton<ITradingHubClient, TradingHubClient>();
+
             // Register ViewModels
+            builder.Services.AddTransient<DashboardViewModel>();
+            builder.Services.AddTransient<OrderEntryViewModel>();
             builder.Services.AddTransient<StrategyListViewModel>();
             builder.Services.AddTransient<StrategyEditorViewModel>();
             builder.Services.AddTransient<BacktestViewModel>();
@@ -66,6 +75,21 @@ public partial class App : System.Windows.Application
 
             // Set ServiceProvider
             ServiceProvider = _host.Services;
+
+            // Connect to SignalR hub
+            Task.Run(async () =>
+            {
+                try
+                {
+                    var hubClient = ServiceProvider.GetRequiredService<ITradingHubClient>();
+                    await hubClient.ConnectAsync();
+                    Log.Information("Connected to SignalR Trading Hub");
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "Failed to connect to SignalR Trading Hub - will retry automatically");
+                }
+            });
 
             Log.Information("AlgoTrading Desktop application started");
         }
@@ -82,6 +106,21 @@ public partial class App : System.Windows.Application
         try
         {
             Log.Information("AlgoTrading Desktop application shutting down");
+
+            // Disconnect from SignalR hub
+            try
+            {
+                var hubClient = ServiceProvider?.GetService<ITradingHubClient>();
+                if (hubClient != null)
+                {
+                    await hubClient.DisconnectAsync();
+                    Log.Information("Disconnected from SignalR Trading Hub");
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Error disconnecting from SignalR Trading Hub");
+            }
 
             if (_host != null)
             {

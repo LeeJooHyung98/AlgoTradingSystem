@@ -1,6 +1,7 @@
 using AlgoTrading.Application.Behaviors;
 using AlgoTrading.Application.Services.Trading;
 using AlgoTrading.Application.Services.Strategy;
+using AlgoTrading.Application.Services.Strategy.Strategies;
 using FluentValidation;
 using Mapster;
 using MapsterMapper;
@@ -62,6 +63,12 @@ public static class DependencyInjection
         services.AddScoped<IPortfolioBacktestService, PortfolioBacktestService>();
         services.AddScoped<ISignalGenerationService, SignalGenerationService>();
         services.AddScoped<ITechnicalIndicatorService, TechnicalIndicatorService>();
+
+        // Trading Strategies
+        services.AddScoped<ITradingStrategy, MovingAverageCrossStrategy>();
+        // TODO: Add more strategies as they are implemented
+        // services.AddScoped<ITradingStrategy, RSIStrategy>();
+        // services.AddScoped<ITradingStrategy, BollingerBandsStrategy>();
 
         return services;
     }

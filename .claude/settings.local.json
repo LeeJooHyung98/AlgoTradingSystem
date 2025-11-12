@@ -23,7 +23,9 @@
       "Bash(dotnet run:*)",
       "Bash(Select-String -Pattern \"Error:|Exception|Backtest failed\" -Context 2,2)",
       "Bash(docker ps:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(Select-String -Pattern \"Error:|error |성공|failed\" -Context 2,2)"
     ],
     "deny": [],
     "ask": []
